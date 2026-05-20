@@ -1,63 +1,63 @@
 #!/bin/bash
-# -e exit on any error
-# -u exit on unassigned variable
-# -o exit on pipeline failure
 set -euo pipefail
 
 # required archives
-CONTROLLER="splunk-8.2.4-87e2dda940d1-Linux-x86_64.tgz"
+FORWARDER="splunkforwarder-8.2.4-87e2dda940d1-Linux-x86_64.tgz"
 ADD_ON="splunk-add-on-for-unix-and-linux_870.tgz"
 
 # expected extractions
+EXTRACTED_FORWARDER="splunkforwarder"
 EXTRACTED_ADD_ON="Splunk_TA_nix"
-EXTRACTED_CONTROLLER="splunk"
 
-# default root splunk enterprise
+# default install root
 DEFAULT_ROOT="/opt"
 
 # splunk service user
 SPLUNK_USER="splunk"
 SPLUNK_GROUP="splunk"
-SPLUNK_HOME="$DEFAULT_ROOT/$EXTRACTED_CONTROLLER"
+SPLUNK_HOME="$DEFAULT_ROOT/$EXTRACTED_FORWARDER"
 
-# run script as root user
+# run script as root
 if [[ "$EUID" -ne 0 ]]; then
     echo "Please run as root (e.g., sudo $0)"
     exit 1
 fi
 
-# check that three arguments are provided
-if [[ $# -ne 3 ]]; then
-    echo "Usage: $0 <splunk.tar.gz> <splunk_add_on.tar.gz> <admin_password>"
+# check that four arguments are provided
+if [[ $# -ne 4 ]]; then
+    echo "Usage: $0 <splunkforwarder.tar.gz> <splunk_add_on.tar.gz> <controller_ip> <admin_password>"
     exit 1
 fi
 
-# check if file exists at user path
+# validate forwarder archive
 if [[ ! -f "$1" ]]; then
-    echo "First argument must be type file: <archive.tar.gz>"
+    echo "First argument must be a file: <$FORWARDER.tar.gz>"
+    exit 1
+fi
+if [[ "$(basename "$1")" != "$FORWARDER" ]]; then
+    echo "First argument must be: $FORWARDER"
     exit 1
 fi
 
-# check that correct archive has been provided
-if [[ "$(basename "$1")" != "$CONTROLLER" ]]; then
-    echo "First argument must be: $CONTROLLER"
-    exit 1
-fi
-
-# check if file is provided at user path
+# validate add-on archive
 if [[ ! -f "$2" ]]; then
-    echo "Second argument must be type file: <archive.tar.gz>"
+    echo "Second argument must be a file: <$ADD_ON.tar.gz>"
     exit 1
 fi
-
-# check that splunk add on archive
 if [[ "$(basename "$2")" != "$ADD_ON" ]]; then
     echo "Second argument must be: $ADD_ON"
     exit 1
 fi
 
+# validate controller IP
+CONTROLLER_IP="$3"
+if [[ ! "$CONTROLLER_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo "Third argument must be a valid IP address: <controller_ip>"
+    exit 1
+fi
+
 # admin password
-SPLUNK_ADMIN_PASSWORD="$3"
+SPLUNK_ADMIN_PASSWORD="$4"
 
 # create splunk group if it doesn't exist
 if ! getent group "$SPLUNK_GROUP" > /dev/null 2>&1; then
@@ -83,16 +83,15 @@ else
 fi
 
 # extract archives
-echo "Extracting splunk archives..."
+echo "Extracting archives..."
 tar -zxf "$1" -C "$DEFAULT_ROOT"
 tar -zxf "$2" -C "$DEFAULT_ROOT"
 
-# check that expected files have been extracted
-if [[ ! -d "$DEFAULT_ROOT/$EXTRACTED_CONTROLLER" ]]; then
-    echo "Expected folder not found at: $DEFAULT_ROOT/$EXTRACTED_CONTROLLER"
+# validate extraction
+if [[ ! -d "$DEFAULT_ROOT/$EXTRACTED_FORWARDER" ]]; then
+    echo "Expected folder not found at: $DEFAULT_ROOT/$EXTRACTED_FORWARDER"
     exit 1
 fi
-
 if [[ ! -d "$DEFAULT_ROOT/$EXTRACTED_ADD_ON" ]]; then
     echo "Expected folder not found at: $DEFAULT_ROOT/$EXTRACTED_ADD_ON"
     exit 1
@@ -102,7 +101,8 @@ fi
 echo "Setting ownership of $SPLUNK_HOME to $SPLUNK_USER:$SPLUNK_GROUP..."
 chown -R "$SPLUNK_USER":"$SPLUNK_GROUP" "$SPLUNK_HOME"
 
-# app config files
+# configure add-on
+echo "Configuring add-on..."
 SPLUNK_APP_CONFIG_ROOT="$SPLUNK_HOME/etc/apps"
 mv "$DEFAULT_ROOT/$EXTRACTED_ADD_ON" "$SPLUNK_APP_CONFIG_ROOT"
 mkdir "$SPLUNK_APP_CONFIG_ROOT/$EXTRACTED_ADD_ON/local"
@@ -110,8 +110,7 @@ cp "$SPLUNK_APP_CONFIG_ROOT/$EXTRACTED_ADD_ON/default/inputs.conf" "$SPLUNK_APP_
 sed -i s/1/0/g "$SPLUNK_APP_CONFIG_ROOT/$EXTRACTED_ADD_ON/local/inputs.conf"
 sed -i s/true/false/g "$SPLUNK_APP_CONFIG_ROOT/$EXTRACTED_ADD_ON/local/inputs.conf"
 
-# set initial admin credentials via user-seed.conf
-# splunk reads this on first start, creates the admin user, then deletes the file
+# set admin credentials
 echo "Configuring admin credentials..."
 mkdir -p "$SPLUNK_HOME/etc/system/local"
 cat > "$SPLUNK_HOME/etc/system/local/user-seed.conf" << EOF
@@ -123,8 +122,8 @@ EOF
 # fix ownership after all file operations
 chown -R "$SPLUNK_USER":"$SPLUNK_GROUP" "$SPLUNK_HOME"
 
-# enable boot-start under splunk user with systemd
-echo "Enabling Splunk boot-start..."
+# enable boot-start
+echo "Enabling boot-start..."
 "$SPLUNK_HOME/bin/splunk" enable boot-start \
     -systemd-managed 1 \
     -user "$SPLUNK_USER" \
@@ -132,24 +131,42 @@ echo "Enabling Splunk boot-start..."
     --answer-yes \
     --no-prompt
 
-# remove problematic cgroup chown lines from service file
-echo "Patching Splunkd.service..."
-sed -i '/chown -R.*cgroup/d' /etc/systemd/system/Splunkd.service
+# patch cgroup lines from service file
+echo "Patching SplunkForwarder.service..."
+sed -i '/chown -R.*cgroup/d' /etc/systemd/system/SplunkForwarder.service
+
+# start forwarder
+echo "Starting Splunk forwarder..."
+systemctl daemon-reload
+systemctl start SplunkForwarder.service
+
+# configure forwarding to controller
+echo "Configuring forwarding to controller at $CONTROLLER_IP..."
+sudo -u "$SPLUNK_USER" "$SPLUNK_HOME/bin/splunk" add forward-server "$CONTROLLER_IP:9997" \
+    -auth "admin:$SPLUNK_ADMIN_PASSWORD"
+
+# configure deployment server poll
+echo "Configuring deployment poll..."
+sudo -u "$SPLUNK_USER" "$SPLUNK_HOME/bin/splunk" set deploy-poll "$CONTROLLER_IP:9997" \
+    -auth "admin:$SPLUNK_ADMIN_PASSWORD"
+
+# add log monitor
+echo "Adding /var/log monitor..."
+sudo -u "$SPLUNK_USER" "$SPLUNK_HOME/bin/splunk" add monitor /var/log/ \
+    -auth "admin:$SPLUNK_ADMIN_PASSWORD"
+
+# restart to apply all changes
+echo "Restarting Splunk forwarder..."
+systemctl restart SplunkForwarder.service
 
 # open firewall ports
 echo "Configuring firewall..."
-firewall-cmd --add-port=8000/tcp --zone=public --permanent  # web UI
-firewall-cmd --add-port=8089/tcp --zone=public --permanent  # management
-firewall-cmd --add-port=9997/tcp --zone=public --permanent  # forwarder receiving
+firewall-cmd --add-port=9997/tcp --zone=public --permanent
+firewall-cmd --add-port=8089/tcp --zone=public --permanent
 firewall-cmd --reload
 
-# reload systemd and start splunk
-echo "Starting Splunk..."
-systemctl daemon-reload
-systemctl start Splunkd.service
-systemctl status Splunkd.service --no-pager
+systemctl status SplunkForwarder.service --no-pager
 
-echo "Splunk controller installed successfully with add-on for Linux and Unix"
-echo "Web UI available at: http://$(hostname -I | awk '{print $1}'):8000"
+echo "Splunk forwarder installed and configured successfully"
 echo "Login with username: admin"
 exit 0
