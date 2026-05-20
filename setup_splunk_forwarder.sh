@@ -1,4 +1,20 @@
 #!/bin/bash
+# =============================================================
+# AUTHOR:        Ken Fowler
+# COURSE:        SEC320
+# LAST MODIFIED: May 20, 2026
+# -------------------------------------------------------------
+# DESCRIPTION:
+#   Installs and configures Splunk Universal Forwarder
+#   with the Unix/Linux add-on. Sets up splunk service
+#   account, systemd boot-start, forwarding to controller,
+#   and /var/log monitoring.
+# -------------------------------------------------------------
+# USAGE:
+#   sudo ./setup_splunk_agent.sh <splunkforwarder.tar.gz> \
+#        <addon.tar.gz> <controller_ip> <admin_password>
+# =============================================================
+
 set -euo pipefail
 
 # required archives

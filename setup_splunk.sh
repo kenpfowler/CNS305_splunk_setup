@@ -1,4 +1,19 @@
 #!/bin/bash
+# =============================================================
+# AUTHOR:        Ken Fowler
+# COURSE:        SEC320
+# LAST MODIFIED: May 20, 2026
+# -------------------------------------------------------------
+# DESCRIPTION:
+#   Installs and configures Splunk Enterprise controller
+#   with the Unix/Linux add-on. Sets up splunk service
+#   account, systemd boot-start, and firewall rules.
+# -------------------------------------------------------------
+# USAGE:
+#   sudo ./setup_splunk_controller.sh <splunk.tar.gz> \
+#        <addon.tar.gz> <admin_password>
+# =============================================================
+
 # -e exit on any error
 # -u exit on unassigned variable
 # -o exit on pipeline failure
