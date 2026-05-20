@@ -69,7 +69,7 @@ if [[ ! -d "$DEFAULT_ROOT/$EXTRACTED_CONTROLLER" ]]; then
 	exit 1
 fi
 
-if [[ ! -d "$DEFAULT_ROOT/$EXTRACTED_ADD_ON" ]] then
+if [[ ! -d "$DEFAULT_ROOT/$EXTRACTED_ADD_ON" ]]; then
 	echo "Expected folder not found at: $DEFAULT_ROOT/$EXTRACTED_ADD_ON"
 	exit 1
 fi
