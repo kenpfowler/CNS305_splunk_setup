@@ -42,8 +42,8 @@ if [[ "$EUID" -ne 0 ]]; then
 fi
 
 # check that three arguments are provided
-if [[ $# -ne 3 ]]; then
-    echo "Usage: $0 <splunk.tar.gz> <splunk_add_on.tar.gz> <admin_password>"
+if [[ $# -ne 2 ]]; then
+    echo "Usage: $0 <splunk.tar.gz> <splunk_add_on.tar.gz>"
     exit 1
 fi
 
@@ -71,8 +71,23 @@ if [[ "$(basename "$2")" != "$ADD_ON" ]]; then
     exit 1
 fi
 
-# admin password
-SPLUNK_ADMIN_PASSWORD="$3"
+# Replace the $3 argument approach with an interactive prompt
+read -r -s -p "Enter Splunk admin password: " SPLUNK_ADMIN_PASSWORD
+echo
+read -r -s -p "Confirm Splunk admin password: " SPLUNK_ADMIN_PASSWORD_CONFIRM
+echo
+
+# Confirm passwords match
+if [[ "$SPLUNK_ADMIN_PASSWORD" != "$SPLUNK_ADMIN_PASSWORD_CONFIRM" ]]; then
+    echo "Error: Passwords do not match"
+    exit 1
+fi
+
+# Password strength check
+if [[ ${#SPLUNK_ADMIN_PASSWORD} -lt 8 ]]; then
+    echo "Error: Password must be at least 8 characters"
+    exit 1
+fi
 
 # create splunk group if it doesn't exist
 if ! getent group "$SPLUNK_GROUP" > /dev/null 2>&1; then
@@ -150,6 +165,14 @@ echo "Enabling Splunk boot-start..."
 # remove problematic cgroup chown lines from service file
 echo "Patching Splunkd.service..."
 sed -i '/chown -R.*cgroup/d' /etc/systemd/system/Splunkd.service
+
+# enable receiving from forwarders on port 9997
+echo "Enabling Splunk receiver on port 9997..."
+sudo -u "$SPLUNK_USER" "$SPLUNK_HOME/bin/splunk" enable listen 9997 \
+    --accept-license \
+    --answer-yes \
+    --no-prompt \
+    -auth "admin:$SPLUNK_ADMIN_PASSWORD"
 
 # open firewall ports
 echo "Configuring firewall..."

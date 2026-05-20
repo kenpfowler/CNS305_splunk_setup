@@ -40,11 +40,11 @@ if [[ "$EUID" -ne 0 ]]; then
 fi
 
 # check that four arguments are provided
-if [[ $# -ne 4 ]]; then
-    echo "Usage: $0 <splunkforwarder.tar.gz> <splunk_add_on.tar.gz> <controller_ip> <admin_password>"
+if [[ $# -ne 3 ]]; then
+    echo "Usage: $0 <splunkforwarder.tar.gz> <splunk_add_on.tar.gz> <controller_ip>"
     exit 1
 fi
-
+ 
 # validate forwarder archive
 if [[ ! -f "$1" ]]; then
     echo "First argument must be a file: <$FORWARDER.tar.gz>"
@@ -72,8 +72,23 @@ if [[ ! "$CONTROLLER_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     exit 1
 fi
 
-# admin password
-SPLUNK_ADMIN_PASSWORD="$4"
+# Replace the $3 argument approach with an interactive prompt
+read -r -s -p "Enter Splunk admin password: " SPLUNK_ADMIN_PASSWORD
+echo
+read -r -s -p "Confirm Splunk admin password: " SPLUNK_ADMIN_PASSWORD_CONFIRM
+echo
+
+# Confirm passwords match
+if [[ "$SPLUNK_ADMIN_PASSWORD" != "$SPLUNK_ADMIN_PASSWORD_CONFIRM" ]]; then
+    echo "Error: Passwords do not match"
+    exit 1
+fi
+
+# Password strength check
+if [[ ${#SPLUNK_ADMIN_PASSWORD} -lt 8 ]]; then
+    echo "Error: Password must be at least 8 characters"
+    exit 1
+fi
 
 # create splunk group if it doesn't exist
 if ! getent group "$SPLUNK_GROUP" > /dev/null 2>&1; then
@@ -163,7 +178,7 @@ sudo -u "$SPLUNK_USER" "$SPLUNK_HOME/bin/splunk" add forward-server "$CONTROLLER
 
 # configure deployment server poll
 echo "Configuring deployment poll..."
-sudo -u "$SPLUNK_USER" "$SPLUNK_HOME/bin/splunk" set deploy-poll "$CONTROLLER_IP:9997" \
+sudo -u "$SPLUNK_USER" "$SPLUNK_HOME/bin/splunk" set deploy-poll "$CONTROLLER_IP:8089" \
     -auth "admin:$SPLUNK_ADMIN_PASSWORD"
 
 # add log monitor
@@ -176,6 +191,17 @@ else
     sudo -u splunk "$SPLUNK_HOME/bin/splunk" add monitor /var/log/ \
         -auth "admin:$SPLUNK_ADMIN_PASSWORD"
 fi
+
+# Grant splunk read access to secure log via ACL
+echo "Setting ACL on /var/log/secure..."
+setfacl -m u:"$SPLUNK_USER":r /var/log/secure
+
+# Persist ACL across log rotations
+echo "Configuring logrotate to persist ACL..."
+sed -i '/\/var\/log\/secure/,/}/ {
+    /postrotate/!{ /endscript/i\    /usr/bin/setfacl -m u:'"$SPLUNK_USER"':r /var/log/secure
+    }
+}' /etc/logrotate.d/syslog
 
 # restart to apply all changes
 echo "Restarting Splunk forwarder..."
