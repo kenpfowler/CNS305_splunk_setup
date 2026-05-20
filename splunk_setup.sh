@@ -1,37 +1,58 @@
 #!/bin/bash
 
-# exit on any error
-set -e
+# -e exit on any error
+# -u exit on unassigned variable
+# -o exit on pipeline failure
+set -euo pipefail
 
-# if the number of arguments is less than 2, stop the script
-if [[ $# -lt 2 ]]; then
-    echo "Usage: $0 <archive1.tar.gz> <archive2.tar.gz>"
+# required archives
+CONTROLLER="splunk-8.2.4-87e2dda940d1-Linux-x86_64.tgz"
+AGENT="splunkforwarder-8.2.4-87e2dda940d1-Linux-x86_64.tgz"
+ADD_ON="splunk-add-on-for-unix-and-linux_870.tgz"
+
+# expected extractions
+EXTRACTED_ADD_ON="Splunk_TA_nix"
+EXTRACTED_FORWARDER="splunkforwarder"
+EXTRACTED_CONTROLLER="splunk"
+
+# default root splunk enterprise
+DEFAULT_ROOT="$HOME/opt"
+
+# app config files
+SPLUNK_APP_CONFIG_ROOT="$DEFAULT_ROOT/$EXTRACTED_CONTROLLER/etc/apps"
+
+# run script as root user
+if [[ "$EUID" -ne 0 ]]; then
+  echo "Please run as root (e.g., sudo $0)"
+  exit 1
+fi
+
+# check that two arguments are provided
+if [[ $# -eq 2 ]]; then
+    echo "Usage: $0 <splunk.tar.gz> <splunk_add_on.tar.gz>"
     exit 1
 fi
 
-# required archives
-controller="splunk-8.2.4-87e2dda940d1-Linux-x86_64.tgz"
-agent="splunkforwarder-8.2.4-87e2dda940d1-Linux-x86_64.tgz"
-add_on="splunk-add-on-for-unix-and-linux_870.tgz"
-
-# expected extractions
-extracted_add_on="Splunk_TA_nix"
-extracted_forwarder="splunkforwarder"
-extracted_controller="splunk"
-
-# default root splunk
-default_root="$HOME/opt"
-
-# check if splunk archive exists
-if [ ! -f "$1" ]; then  
+# check if file exists at user path
+if [[ ! -f "$1" ]]; then  
 	echo "First argument must be type file: <archive.tar.gz>"
 	exit 1
 fi
 
-# check if splunk add-on archive exists
-if [ ! -f "$2" ]; then
+# check that correct archive has been provided
+if [[ ! "$(basename $1)" == "$CONTROLLER" ]]; then
+	echo "First argument must be: $CONTROLLER"
+fi
+
+# check if file is provided at user path
+if [[ ! -f "$2" ]]; then
 	echo "Second argument must be type file: <archive.tar.gz>"
 	exit 1
+fi
+
+# check that splunk add on archive 
+if [[ ! "$(basename $2)" = "$ADD_ON" ]]; then
+	echo "First argument must be: $ADD_ON"
 fi
 
 # -z compress/decompress 
@@ -41,18 +62,28 @@ fi
 # -C change to specificed directory and write
 
 # extract archives
-tar -zxvf "$1" -C "$default_root"
-tar -zxvf "$2" -C "$default_root"
+tar -zxf "$1" -C "$DEFAULT_ROOT"
+tar -zxf "$2" -C "$DEFAULT_ROOT"
 
 # check that expected files have been extracted
-if [ ! -f "$default_root/$extracted_controller" ]; then
-	echo "Expected file not found at: $default_root/$extracted_controller"
+if [[ ! -f "$DEFAULT_ROOT/$EXTRACTED_CONTROLLER" ]]; then
+	echo "Expected file not found at: $DEFAULT_ROOT/$EXTRACTED_CONTROLLER"
 	exit 1
 fi
 
-if [ ! -f "$default_root/$extracted_add_on" ] then
-	echo "Expected file not found at: $default_root/$extracted_add_on"
+if [[ ! -f "$DEFAULT_ROOT/$EXTRACTED_ADD_ON" ]] then
+	echo "Expected file not found at: $DEFAULT_ROOT/$EXTRACTED_ADD_ON"
 	exit 1
 fi
 
+mv "$DEFAULT_ROOT/$EXTRACTED_ADD_ON" "$SPLUNK_APP_CONFIG_ROOT"
 
+mkdir "$SPLUNK_APP_CONFIG_ROOT/$EXTRACTED_ADD_ON/local"
+
+cp "$SPLUNK_APP_CONFIG_ROOT/$EXTRACTED_ADD_ON/default/inputs.conf" "$SPLUNK_APP_CONFIG_ROOT/$EXTRACTED_ADD_ON/local"
+
+sed -i s/1/0/g "$SPLUNK_APP_CONFIG_ROOT/$EXTRACTED_ADD_ON/local/inputs.conf"
+sed -i s/true/false/g "$SPLUNK_APP_CONFIG_ROOT/$EXTRACTED_ADD_ON/local/inputs.conf"
+
+echo "Splunk installed with add-on for Linux and Unix"
+exit 0
