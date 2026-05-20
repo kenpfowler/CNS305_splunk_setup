@@ -18,9 +18,6 @@ EXTRACTED_CONTROLLER="splunk"
 # default root splunk enterprise
 DEFAULT_ROOT="$HOME/opt"
 
-# app config files
-SPLUNK_APP_CONFIG_ROOT="$DEFAULT_ROOT/$EXTRACTED_CONTROLLER/etc/apps"
-
 # run script as root user
 if [[ "$EUID" -ne 0 ]]; then
   echo "Please run as root (e.g., sudo $0)"
@@ -75,6 +72,9 @@ if [[ ! -f "$DEFAULT_ROOT/$EXTRACTED_ADD_ON" ]] then
 	echo "Expected file not found at: $DEFAULT_ROOT/$EXTRACTED_ADD_ON"
 	exit 1
 fi
+
+# app config files
+SPLUNK_APP_CONFIG_ROOT="$DEFAULT_ROOT/$EXTRACTED_CONTROLLER/etc/apps"
 
 mv "$DEFAULT_ROOT/$EXTRACTED_ADD_ON" "$SPLUNK_APP_CONFIG_ROOT"
 
