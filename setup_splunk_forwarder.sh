@@ -167,9 +167,15 @@ sudo -u "$SPLUNK_USER" "$SPLUNK_HOME/bin/splunk" set deploy-poll "$CONTROLLER_IP
     -auth "admin:$SPLUNK_ADMIN_PASSWORD"
 
 # add log monitor
-echo "Adding /var/log monitor..."
-sudo -u "$SPLUNK_USER" "$SPLUNK_HOME/bin/splunk" add monitor /var/log/ \
-    -auth "admin:$SPLUNK_ADMIN_PASSWORD"
+# check if monitor already exists before adding
+if sudo -u splunk "$SPLUNK_HOME/bin/splunk" list monitor \
+    -auth "admin:$SPLUNK_ADMIN_PASSWORD" | grep -q "/var/log"; then
+    echo "Monitor for /var/log already exists, skipping..."
+else
+    echo "Adding /var/log monitor..."
+    sudo -u splunk "$SPLUNK_HOME/bin/splunk" add monitor /var/log/ \
+        -auth "admin:$SPLUNK_ADMIN_PASSWORD"
+fi
 
 # restart to apply all changes
 echo "Restarting Splunk forwarder..."
