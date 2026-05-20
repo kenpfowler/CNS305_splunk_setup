@@ -192,16 +192,38 @@ else
         -auth "admin:$SPLUNK_ADMIN_PASSWORD"
 fi
 
-# Grant splunk read access to secure log via ACL
-echo "Setting ACL on /var/log/secure..."
-setfacl -m u:"$SPLUNK_USER":r /var/log/secure
+# install acl package if not present
+if ! command -v setfacl > /dev/null 2>&1; then
+    echo "Installing acl package..."
+    dnf install -y acl
+fi
+
+# Apply ACL to current and any existing rotated files
+echo "Setting ACL on /var/log/secure and rotated files..."
+for log in /var/log/secure /var/log/secure-*; do
+    if [[ -f "$log" ]]; then
+        setfacl -m u:"$SPLUNK_USER":r "$log"
+    fi
+done
 
 # Persist ACL across log rotations
 echo "Configuring logrotate to persist ACL..."
-sed -i '/\/var\/log\/secure/,/}/ {
-    /postrotate/!{ /endscript/i\    /usr/bin/setfacl -m u:'"$SPLUNK_USER"':r /var/log/secure
-    }
-}' /etc/logrotate.d/syslog
+# Instead of sed, create a dedicated logrotate drop-in file
+cat > /etc/logrotate.d/splunk-secure-acl << EOF
+/var/log/secure {
+    postrotate
+        /usr/bin/setfacl -m u:${SPLUNK_USER}:r /var/log/secure 2>/dev/null || true
+    endscript
+}
+EOF
+
+# verify splunk user can read the log
+if sudo -u "$SPLUNK_USER" test -r /var/log/secure; then
+    echo "ACL verified - splunk user can read /var/log/secure"
+else
+    echo "Error: splunk user cannot read /var/log/secure"
+    exit 1
+fi
 
 # restart to apply all changes
 echo "Restarting Splunk forwarder..."
