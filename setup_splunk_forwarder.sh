@@ -12,9 +12,8 @@
 # -------------------------------------------------------------
 # USAGE:
 #   sudo ./setup_splunk_agent.sh <splunkforwarder.tar.gz> \
-#        <addon.tar.gz> <controller_ip> <admin_password>
+#        <addon.tar.gz> <controller_ip>
 # =============================================================
-
 set -euo pipefail
 
 # required archives

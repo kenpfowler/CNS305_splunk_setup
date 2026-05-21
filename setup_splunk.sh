@@ -11,7 +11,7 @@
 # -------------------------------------------------------------
 # USAGE:
 #   sudo ./setup_splunk_controller.sh <splunk.tar.gz> \
-#        <addon.tar.gz> <admin_password>
+#        <addon.tar.gz>
 # =============================================================
 
 # -e exit on any error
