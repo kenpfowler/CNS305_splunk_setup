@@ -41,7 +41,7 @@ if [[ "$EUID" -ne 0 ]]; then
     exit 1
 fi
 
-# check that three arguments are provided
+# check that two arguments are provided
 if [[ $# -ne 2 ]]; then
     echo "Usage: $0 <splunk.tar.gz> <splunk_add_on.tar.gz>"
     exit 1
@@ -71,7 +71,7 @@ if [[ "$(basename "$2")" != "$ADD_ON" ]]; then
     exit 1
 fi
 
-# Replace the $3 argument approach with an interactive prompt
+# Prompt user for splunk admin account password
 read -r -s -p "Enter Splunk admin password: " SPLUNK_ADMIN_PASSWORD
 echo
 read -r -s -p "Confirm Splunk admin password: " SPLUNK_ADMIN_PASSWORD_CONFIRM

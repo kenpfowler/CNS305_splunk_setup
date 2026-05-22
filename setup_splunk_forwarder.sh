@@ -38,7 +38,7 @@ if [[ "$EUID" -ne 0 ]]; then
     exit 1
 fi
 
-# check that four arguments are provided
+# check that 3 arguments are provided
 if [[ $# -ne 3 ]]; then
     echo "Usage: $0 <splunkforwarder.tar.gz> <splunk_add_on.tar.gz> <controller_ip>"
     exit 1
@@ -71,7 +71,7 @@ if [[ ! "$CONTROLLER_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     exit 1
 fi
 
-# Replace the $3 argument approach with an interactive prompt
+# prompt user for splunk admin password
 read -r -s -p "Enter Splunk admin password: " SPLUNK_ADMIN_PASSWORD
 echo
 read -r -s -p "Confirm Splunk admin password: " SPLUNK_ADMIN_PASSWORD_CONFIRM
