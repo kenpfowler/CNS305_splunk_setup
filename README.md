@@ -20,7 +20,9 @@ Agent 3: 192.168.XXX.13
 ## Usage
 
 ### Install Splunk Indexer on Controller
-```sudo ./setup_splunk_controller.sh <splunk.tar.gz> <addon.tar.gz>``` 
+```sudo chmod u+x setup_splunk.sh```
+```sudo ./setup_splunk.sh <splunk.tar.gz> <addon.tar.gz>``` 
 
 ### Install Splunk Forwarder on Agent
-```sudo ./setup_splunk_agent.sh <splunkforwarder.tar.gz> <addon.tar.gz> <controller_ip>```
+```sudo chmod u+x setup_splunk_forwarder```
+```sudo ./setup_splunk_forwarder.sh <splunkforwarder.tar.gz> <addon.tar.gz> <controller_ip>```
