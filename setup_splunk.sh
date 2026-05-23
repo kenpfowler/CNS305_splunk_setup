@@ -151,9 +151,8 @@ configure_addon() {
     
     mkdir -p "$SPLUNK_APP_CONFIG_ROOT/$EXTRACTED_ADD_ON/local"
     cp "$SPLUNK_APP_CONFIG_ROOT/$EXTRACTED_ADD_ON/default/inputs.conf" "$SPLUNK_APP_CONFIG_ROOT/$EXTRACTED_ADD_ON/local"
-    # FIXME: use a better targeted substituion pattern
-    sed -i s/1/0/g "$SPLUNK_APP_CONFIG_ROOT/$EXTRACTED_ADD_ON/local/inputs.conf"
-    sed -i s/true/false/g "$SPLUNK_APP_CONFIG_ROOT/$EXTRACTED_ADD_ON/local/inputs.conf"
+    sed -i 's/^disabled = 1/disabled = 0/g' "$SPLUNK_APP_CONFIG_ROOT/$EXTRACTED_ADD_ON/local/inputs.conf"
+    sed -i 's/^disabled = true/disabled = false/g' "$SPLUNK_APP_CONFIG_ROOT/$EXTRACTED_ADD_ON/local/inputs.conf"
 }
 
 configure_admin_account() {
