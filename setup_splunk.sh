@@ -2,7 +2,7 @@
 # =============================================================
 # AUTHOR:        Ken Fowler
 # COURSE:        SEC320
-# LAST MODIFIED: May 20, 2026
+# LAST MODIFIED: May 23, 2026
 # -------------------------------------------------------------
 # DESCRIPTION:
 #   Installs and configures Splunk Enterprise controller
