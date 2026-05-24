@@ -264,7 +264,7 @@ start_splunk_forwarder() {
 }
 
 reload_splunk_forwarder() {
-    systemctl reload SplunkForwarder.service
+    systemctl restart SplunkForwarder.service
     systemctl status SplunkForwarder.service --no-pager
     log "Login with username: admin"
     log "Splunk forwarder installed and configured successfully"
