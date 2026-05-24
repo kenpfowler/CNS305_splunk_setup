@@ -156,14 +156,14 @@ configure_addon() {
 }
 
 configure_admin_account() {
-# set initial admin credentials via user-seed.conf
-# splunk reads this on first start, creates the admin user, then deletes the file
-log "Configuring admin credentials..."
-mkdir -p "$SPLUNK_HOME/etc/system/local"
-cat > "$SPLUNK_HOME/etc/system/local/user-seed.conf" << EOF
-[user_info]
-USERNAME = admin
-PASSWORD = $SPLUNK_ADMIN_PASSWORD
+    # set initial admin credentials via user-seed.conf
+    # splunk reads this on first start, creates the admin user, then deletes the file
+    log "Configuring admin credentials..."
+    mkdir -p "$SPLUNK_HOME/etc/system/local"
+    cat > "$SPLUNK_HOME/etc/system/local/user-seed.conf" << EOF
+    [user_info]
+    USERNAME = admin
+    PASSWORD = $SPLUNK_ADMIN_PASSWORD
 EOF
 }
 
