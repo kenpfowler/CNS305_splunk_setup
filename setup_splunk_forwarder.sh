@@ -16,6 +16,12 @@
 # =============================================================
 set -euo pipefail
 
+# import library
+readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# source lib into script
+source "$SCRIPT_DIR/lib/logging.sh"
+
 # required archives
 readonly FORWARDER="splunkforwarder-8.2.4-87e2dda940d1-Linux-x86_64.tgz"
 readonly ADD_ON="splunk-add-on-for-unix-and-linux_870.tgz"
@@ -31,10 +37,6 @@ readonly DEFAULT_ROOT="/opt"
 readonly SPLUNK_USER="splunk"
 readonly SPLUNK_GROUP="splunk"
 readonly SPLUNK_HOME="$DEFAULT_ROOT/$EXTRACTED_FORWARDER"
-
-log() {
-    echo "[splunk_installer] $1"
-}
 
 # run script as root
 validate_input() {

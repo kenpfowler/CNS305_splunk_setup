@@ -19,6 +19,12 @@
 # -o exit on pipeline failure
 set -euo pipefail
 
+# import library
+readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# source lib into script
+source "$SCRIPT_DIR/lib/logging.sh"
+
 # required archives
 readonly CONTROLLER="splunk-8.2.4-87e2dda940d1-Linux-x86_64.tgz"
 readonly ADD_ON="splunk-add-on-for-unix-and-linux_870.tgz"
@@ -35,10 +41,6 @@ readonly SPLUNK_USER="splunk"
 readonly SPLUNK_GROUP="splunk"
 readonly SPLUNK_HOME="$DEFAULT_ROOT/$EXTRACTED_CONTROLLER"
 
-log() {
-    echo "[splunk_installer] $1"
-}
-
 validate_arguments() {
     # run script as root user
     if [[ "$EUID" -ne 0 ]]; then
@@ -48,13 +50,13 @@ validate_arguments() {
 
     # check that two arguments are provided
     if [[ $# -ne 2 ]]; then
-        log "Usage: $0 <splunk.tar.gz> <splunk_add_on.tar.gz>"
+        log "Usage: $0 <$CONTROLLER> <$ADD_ON>"
         exit 1
     fi
 
     # check if file exists at user path
     if [[ ! -f "$1" ]]; then
-        log "First argument must be type file: <archive.tar.gz>"
+        log "First argument must be type file"
         exit 1
     fi
 
@@ -221,15 +223,15 @@ start_splunk() {
 # call required functions for installation in sequence
 main() {
     validate_arguments "$@"
-    create_splunk_user
-    extract_archives "$@"
-    configure_addon
-    configure_admin_account
-    fix_ownership
-    enable_boot_start
-    enable_listen
-    configure_firewall_rules
-    start_splunk
+#    create_splunk_user
+#    extract_archives "$@"
+#    configure_addon
+#    configure_admin_account
+#    fix_ownership
+#    enable_boot_start
+#    enable_listen
+#    configure_firewall_rules
+#    start_splunk
 }
 
 main "$@"
