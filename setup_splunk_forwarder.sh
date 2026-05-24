@@ -2,7 +2,7 @@
 # =============================================================
 # AUTHOR:        Ken Fowler
 # COURSE:        SEC320
-# LAST MODIFIED: May 20, 2026
+# LAST MODIFIED: May 24, 2026
 # -------------------------------------------------------------
 # DESCRIPTION:
 #   Installs and configures Splunk Universal Forwarder
@@ -11,7 +11,7 @@
 #   and /var/log monitoring.
 # -------------------------------------------------------------
 # USAGE:
-#   sudo ./setup_splunk_agent.sh <splunkforwarder.tar.gz> \
+#   sudo ./setup_splunk_forwarder.sh <splunkforwarder.tar.gz> \
 #        <addon.tar.gz> <controller_ip>
 # =============================================================
 set -euo pipefail
@@ -65,6 +65,7 @@ validate_input() {
         log "Second argument must be a file: <$ADD_ON>"
         exit 1
     fi
+
     if [[ "$(basename "$2")" != "$ADD_ON" ]]; then
         log "Second argument must be: $ADD_ON"
         exit 1
@@ -72,6 +73,7 @@ validate_input() {
 
     # validate controller IP
     CONTROLLER_IP="$3"
+
     if [[ ! "$CONTROLLER_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
         log "Third argument must be a valid IP address: <controller_ip>"
         exit 1
@@ -147,8 +149,12 @@ configure_addon() {
     # configure add-on
     log "Configuring add-on..."
     local SPLUNK_APP_CONFIG_ROOT="$SPLUNK_HOME/etc/apps"
-    mv "$DEFAULT_ROOT/$EXTRACTED_ADD_ON" "$SPLUNK_APP_CONFIG_ROOT"
-    mkdir "$SPLUNK_APP_CONFIG_ROOT/$EXTRACTED_ADD_ON/local"
+    
+    if [[ ! -d "$SPLUNK_APP_CONFIG_ROOT/$EXTRACTED_ADD_ON" ]]; then
+        mv "$DEFAULT_ROOT/$EXTRACTED_ADD_ON" "$SPLUNK_APP_CONFIG_ROOT"
+    fi
+
+    mkdir -p "$SPLUNK_APP_CONFIG_ROOT/$EXTRACTED_ADD_ON/local"
     cp "$SPLUNK_APP_CONFIG_ROOT/$EXTRACTED_ADD_ON/default/inputs.conf" "$SPLUNK_APP_CONFIG_ROOT/$EXTRACTED_ADD_ON/local"
     sed -i 's/^disabled = 1/disabled = 0/g' "$SPLUNK_APP_CONFIG_ROOT/$EXTRACTED_ADD_ON/local/inputs.conf"
     sed -i 's/^disabled = true/disabled = false/g' "$SPLUNK_APP_CONFIG_ROOT/$EXTRACTED_ADD_ON/local/inputs.conf"
