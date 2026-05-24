@@ -19,13 +19,7 @@
 # -o exit on pipeline failure
 set -euo pipefail
 
-# import library
-readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# source lib into script
-source "$SCRIPT_DIR/lib/logging.sh"
-
-# required archives
+# require archives
 readonly CONTROLLER="splunk-8.2.4-87e2dda940d1-Linux-x86_64.tgz"
 readonly ADD_ON="splunk-add-on-for-unix-and-linux_870.tgz"
 
@@ -40,6 +34,33 @@ readonly DEFAULT_ROOT="/opt"
 readonly SPLUNK_USER="splunk"
 readonly SPLUNK_GROUP="splunk"
 readonly SPLUNK_HOME="$DEFAULT_ROOT/$EXTRACTED_CONTROLLER"
+
+# import library
+readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# source lib into script
+source "$SCRIPT_DIR/lib/logging.sh"
+source "$SCRIPT_DIR/lib/service_account.sh"
+
+get_admin_password() {
+    # Prompt user for splunk admin account password
+    read -r -s -p "Enter Splunk admin password: " SPLUNK_ADMIN_PASSWORD
+    echo
+    read -r -s -p "Confirm Splunk admin password: " SPLUNK_ADMIN_PASSWORD_CONFIRM
+    echo
+
+    # Confirm passwords match
+    if [[ "$SPLUNK_ADMIN_PASSWORD" != "$SPLUNK_ADMIN_PASSWORD_CONFIRM" ]]; then
+        log "Error: Passwords do not match"
+        exit 1
+    fi
+
+    # Password strength check
+    if [[ ${#SPLUNK_ADMIN_PASSWORD} -lt 8 ]]; then
+        log "Error: Password must be at least 8 characters"
+        exit 1
+    fi
+}
 
 validate_arguments() {
     # run script as root user
@@ -68,7 +89,7 @@ validate_arguments() {
 
     # check if file is provided at user path
     if [[ ! -f "$2" ]]; then
-        log "Second argument must be type file: <archive.tar.gz>"
+        log "Second argument must be type file"
         exit 1
     fi
 
@@ -76,49 +97,6 @@ validate_arguments() {
     if [[ "$(basename "$2")" != "$ADD_ON" ]]; then
         log "Second argument must be: $ADD_ON"
         exit 1
-    fi
-
-    # Prompt user for splunk admin account password
-    read -r -s -p "Enter Splunk admin password: " SPLUNK_ADMIN_PASSWORD
-    echo
-    read -r -s -p "Confirm Splunk admin password: " SPLUNK_ADMIN_PASSWORD_CONFIRM
-    echo
-
-    # Confirm passwords match
-    if [[ "$SPLUNK_ADMIN_PASSWORD" != "$SPLUNK_ADMIN_PASSWORD_CONFIRM" ]]; then
-        log "Error: Passwords do not match"
-        exit 1
-    fi
-
-    # Password strength check
-    if [[ ${#SPLUNK_ADMIN_PASSWORD} -lt 8 ]]; then
-        log "Error: Password must be at least 8 characters"
-        exit 1
-    fi
-}
-
-create_splunk_user() {
-    # create splunk group if it doesn't exist
-    if ! getent group "$SPLUNK_GROUP" > /dev/null 2>&1; then
-        log "Creating group: $SPLUNK_GROUP"
-        groupadd --system "$SPLUNK_GROUP"
-    else
-        log "Group '$SPLUNK_GROUP' already exists, skipping..."
-    fi
-
-    # create splunk user if it doesn't exist
-    if ! getent passwd "$SPLUNK_USER" > /dev/null 2>&1; then
-        log "Creating user: $SPLUNK_USER"
-        useradd \
-        --system \
-        --gid "$SPLUNK_GROUP" \
-        --home-dir "$SPLUNK_HOME" \
-        --no-create-home \
-        --shell /sbin/nologin \
-        --comment "Splunk service account" \
-        "$SPLUNK_USER"
-    else
-        log "User '$SPLUNK_USER' already exists, skipping..."
     fi
 }
 
@@ -223,15 +201,17 @@ start_splunk() {
 # call required functions for installation in sequence
 main() {
     validate_arguments "$@"
-#    create_splunk_user
-#    extract_archives "$@"
-#    configure_addon
-#    configure_admin_account
-#    fix_ownership
-#    enable_boot_start
-#    enable_listen
-#    configure_firewall_rules
-#    start_splunk
+    get_admin_password
+    create_splunk_group
+    create_splunk_user
+    extract_archives "$@"
+    configure_addon
+    configure_admin_account
+    fix_ownership
+    enable_boot_start
+    enable_listen
+    configure_firewall_rules
+    start_splunk
 }
 
 main "$@"
