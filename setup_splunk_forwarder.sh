@@ -261,10 +261,13 @@ start_splunk_forwarder() {
     log "Starting Splunk forwarder..."
     systemctl daemon-reload
     systemctl start SplunkForwarder.service
-    systemctl status SplunkForwarder.service --no-pager
+}
 
-    log "Splunk forwarder installed and configured successfully"
+reload_splunk_forwarder() {
+    systemctl reload SplunkForwarder.service
+    systemctl status SplunkForwarder.service --no-pager
     log "Login with username: admin"
+    log "Splunk forwarder installed and configured successfully"
 }
 
 main() {
@@ -276,14 +279,13 @@ main() {
     configure_admin_account
     configure_ownership
     enable_boot_start
-    configure_forwarding_to_controller
-    configure_deploy_poll
-    configure_firewall
-    configure_deploy_poll
-    configure_forwarding_to_controller
-    configure_acl
-    enable_monitor
     start_splunk_forwarder
+    configure_forwarding_to_controller
+    configure_deploy_poll
+    enable_monitor
+    configure_acl
+    configure_firewall
+    reload_splunk_forwarder
 }
 
 main "$@"
