@@ -274,7 +274,7 @@ main() {
     configure_ownership
     configure_addon
     configure_admin_account
-    configuire_ownership
+    configure_ownership
     enable_boot_start
     configure_forwarding_to_controller
     configure_deploy_poll
