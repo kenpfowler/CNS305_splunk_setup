@@ -35,6 +35,11 @@ readonly SPLUNK_USER="splunk"
 readonly SPLUNK_GROUP="splunk"
 readonly SPLUNK_HOME="$DEFAULT_ROOT/$EXTRACTED_CONTROLLER"
 
+# splunk ports
+readonly SPLUNK_DAEMON_PORT="8089"
+readonly SPLUNK_WEB_UI_PORT="8000"
+readonly SPLUNK_RECEIVING_PORT="9997"
+
 log() {
     echo "[splunk_installer] $1"
 }
@@ -95,7 +100,7 @@ validate_arguments() {
     fi
 }
 
-create_splunk_user() {
+create_splunk_group() {
     # create splunk group if it doesn't exist
     if ! getent group "$SPLUNK_GROUP" > /dev/null 2>&1; then
         log "Creating group: $SPLUNK_GROUP"
@@ -103,7 +108,9 @@ create_splunk_user() {
     else
         log "Group '$SPLUNK_GROUP' already exists, skipping..."
     fi
+}
 
+create_splunk_user() {
     # create splunk user if it doesn't exist
     if ! getent passwd "$SPLUNK_USER" > /dev/null 2>&1; then
         log "Creating user: $SPLUNK_USER"
@@ -167,7 +174,7 @@ configure_admin_account() {
 EOF
 }
 
-fix_ownership() {
+configure_ownership() {
     # fix ownership after all file operations
     chown -R "$SPLUNK_USER":"$SPLUNK_GROUP" "$SPLUNK_HOME"
 }
@@ -221,11 +228,12 @@ start_splunk() {
 # call required functions for installation in sequence
 main() {
     validate_arguments "$@"
+    create_splunk_group
     create_splunk_user
     extract_archives "$@"
     configure_addon
     configure_admin_account
-    fix_ownership
+    configure_ownership
     enable_boot_start
     enable_listen
     configure_firewall_rules
